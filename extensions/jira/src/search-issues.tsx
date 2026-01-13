@@ -1,4 +1,4 @@
-import { Icon, LaunchProps, List } from "@raycast/api";
+import { Icon, List } from "@raycast/api";
 import { useCachedPromise, useCachedState } from "@raycast/utils";
 import { useState, useMemo } from "react";
 
@@ -19,7 +19,7 @@ export function SearchIssues({ query: initialQuery }: SearchIssuesProps) {
   const { data: projects, isLoading: isLoadingProjects } = useCachedPromise(
     (query) => getProjects(query),
     [projectQuery],
-    { keepPreviousData: true }
+    { keepPreviousData: true },
   );
 
   const isSearching = projectQuery !== "";
@@ -31,11 +31,18 @@ export function SearchIssues({ query: initialQuery }: SearchIssuesProps) {
   const jql = useMemo(() => {
     let jql = "";
     if (cachedProject) {
-      jql += `project = ${cachedProject.key} ${query !== "" ? "AND" : ""} `;
+      jql += `project = '${cachedProject.key}' ${query !== "" ? "AND" : ""} `;
     }
 
     if (query === "") {
-      jql += "ORDER BY created DESC";
+      if (cachedProject) {
+        // Safe because project filter acts as restriction
+        jql += "ORDER BY created DESC";
+      } else {
+        // Add time-based restriction to avoid unbounded JQL error from Jira API
+        // Fetch issues created in the last 30 days by default
+        jql += "created >= -30d ORDER BY created DESC";
+      }
     } else if (query.startsWith("jql:")) {
       jql += query.split("jql:")[1];
     } else {
@@ -48,8 +55,13 @@ export function SearchIssues({ query: initialQuery }: SearchIssuesProps) {
 
       const singleNumberRegex = /^[0-9]+$/;
       const singleNumberMatches = query.match(singleNumberRegex);
-      if (singleNumberMatches && cachedProject) {
-        issueKeyQuery = `OR issuekey = ${cachedProject.key}-${singleNumberMatches[0]}`;
+      if (singleNumberMatches) {
+        if (cachedProject) {
+          issueKeyQuery = `OR issuekey = ${cachedProject.key}-${singleNumberMatches[0]}`;
+        } else {
+          const allPossibleIssueKeys = projects?.map((project) => `${project.key}-${singleNumberMatches[0]}`);
+          issueKeyQuery = `OR issuekey IN (${allPossibleIssueKeys?.join(",")})`;
+        }
       }
 
       const escapedQuery = query.replace(/[\\"]/g, "\\$&");
@@ -125,6 +137,4 @@ export function SearchIssues({ query: initialQuery }: SearchIssuesProps) {
     </List>
   );
 }
-export default function Command(props: LaunchProps) {
-  return withJiraCredentials(<SearchIssues query={props.launchContext?.query} />);
-}
+export default withJiraCredentials(SearchIssues);

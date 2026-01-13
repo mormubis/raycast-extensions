@@ -106,9 +106,36 @@ export class GitRepoService {
   }
 }
 
+function resolveGitPath(repoPath: string): string {
+  const gitPath = path.join(repoPath, ".git");
+
+  try {
+    const stats = fs.statSync(gitPath);
+
+    if (stats.isFile()) {
+      const content = fs.readFileSync(gitPath, "utf8").trim();
+      const match = content.match(/^gitdir:\s*(.+)$/);
+
+      if (match) {
+        const gitDirPath = match[1];
+        const basePath = path.dirname(gitPath);
+        return path.resolve(basePath, gitDirPath);
+      }
+    }
+
+    return gitPath;
+  } catch {
+    return gitPath;
+  }
+}
+
+function resolveGitConfig(repoPath: string): string {
+  return path.join(resolveGitPath(repoPath), "config");
+}
+
 function gitRemotes(path: string): RemoteRepo[] {
   let repos = [] as RemoteRepo[];
-  const gitConfig = parseGitConfig.sync({ cwd: path, path: ".git/config", expandKeys: true });
+  const gitConfig = parseGitConfig.sync({ cwd: path, path: resolveGitConfig(path), expandKeys: true });
   if (gitConfig.remote != null) {
     for (const remoteName in gitConfig.remote) {
       const config = gitConfig.remote[remoteName] as GitRemote;
@@ -180,8 +207,8 @@ function parseRepoPaths(mainPath: string, repoPaths: string[], submodules = fals
         };
       });
   } else {
-    return repoPaths.map((path) => {
-      const fullPath = path.replace("/.git", "");
+    return repoPaths.map((repoPath) => {
+      const fullPath = path.dirname(repoPath);
       const name = fullPath.split("/").pop() ?? "unknown";
       const remotes = gitRemotes(fullPath);
       return {
@@ -212,9 +239,13 @@ async function findSubmodules(path: string): Promise<string[]> {
 
 async function findWorktrees(path: string, maxDepth: number): Promise<GitRepo[]> {
   let foundRepos: GitRepo[] = [];
-  const findCmd = `find -L ${path.replace(/(\s+)/g, "\\$1")} -maxdepth ${maxDepth} -name .git -type f`;
+  const findCmd = `find -L ${path.replace(/(\s+)/g, "\\$1")} -maxdepth ${maxDepth} -name .git -type f -print || true`;
   const { stdout, stderr } = await execp(findCmd);
-  if (!stderr) {
+  const filteredStderr = stderr
+    .split("\n")
+    .filter((line) => !/Permission denied|Operation not permitted/.test(line))
+    .join("\n");
+  if (!filteredStderr) {
     const repoPaths = stdout.split("\n").filter((e) => e);
     const repos = parseRepoPaths(path, repoPaths, false);
     foundRepos = foundRepos.concat(repos);
@@ -227,9 +258,16 @@ export async function findRepos(paths: string[], maxDepth: number, includeSubmod
   let foundRepos: GitRepo[] = [];
   await Promise.allSettled(
     paths.map(async (path) => {
-      const findCmd = `find -L ${path.replace(/(\s+)/g, "\\$1")} -maxdepth ${maxDepth} -name .git -type d`;
+      const findCmd = `find -L ${path.replace(
+        /(\s+)/g,
+        "\\$1"
+      )} -maxdepth ${maxDepth} -type d -name .git -print || true`;
       const { stdout, stderr } = await execp(findCmd);
-      if (stderr) {
+      const filteredStderr = stderr
+        .split("\n")
+        .filter((line) => !/Permission denied|Operation not permitted/.test(line))
+        .join("\n");
+      if (filteredStderr) {
         showToast(Toast.Style.Failure, "Find Failed", stderr);
         return [];
       }

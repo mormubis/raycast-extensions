@@ -1,6 +1,75 @@
 # Browser Bookmarks Changelog
 
-## [Support for Firefox Dev edition] - {PR_MERGE_DATE}
+## [Support for Helium Browser] - 2025-12-08
+
+- Added support for `Helium` browser.
+
+## [Support for libreWolf] - 2025-12-07
+
+- Added support for `LibreWolf` browser.
+
+## [Bug Fixes] - 2025-11-10
+
+- Improved error handling for directory reading.
+
+## [Support for ChatGPT Atlas Browser] - 2025-10-23
+
+- Added support for `ChatGPT Atlas` browser.
+
+## [Fix Zen Support] - 2025-08-19
+
+- Fix Bundle ID for Zen Browser.
+
+## [Add Quicklinks Support] - 2025-07-07
+
+- Added action to create `Quicklink` from bookmark.
+
+## [Support for Dia and Ghost Browser] - 2025-06-26
+
+- Added support for `Dia` browser.
+- Added support for `Ghost Browser`.
+
+## [Support Island Browser] - 2025-01-30
+
+- Added support for `Island` browser.
+
+## [Support Whale Browser] - 2024-12-14
+
+- Added support for `Whale` Browser Desktop.
+
+## [Update Logo] - 2024-12-11
+
+- Updated to latest logo since rebrand.
+
+## [Support Zen Browser] - 2024-11-26
+
+- Added support for Zen Browser Desktop.
+
+## [Support for Prisma Access] - 2024-11-24
+
+- Add support for `Prisma Access` browser.
+
+## [Support for Chrome Beta] - 2024-01-12
+
+- Add support for `Chrome Beta` browser.
+
+## [Bug Fixes] - 2024-02-01
+
+- Fixed sort by score issue
+
+## [Bug Fixes] - 2023-12-29
+
+- Fixed an issue where the selected item would not be the first one after the search text changed
+
+## [Support for Sidekick] - 2023-12-18
+
+- Add support for `Sidekick` browser
+
+## [Support for Brave Nightly] - 2023-12-09
+
+- Add support for `Brave Nightly` browser.
+
+## [Support for Firefox Dev edition] - 2023-11-24
 
 - Add support for `Firefox Dev` browser, which uses the same profiles as `Firefox`.
 

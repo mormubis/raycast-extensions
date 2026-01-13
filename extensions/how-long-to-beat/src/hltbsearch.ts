@@ -1,19 +1,21 @@
 import { showToast, Toast } from "@raycast/api";
-import axios from "axios";
-import UserAgent from "user-agents";
+import { fetchLatestHash } from "./helpers";
+import { ApiService } from "./ApiService";
+import type { SearchPayload, SearchResponse } from "./types";
+import { LocalStorage } from "@raycast/api";
 
 /**
  * Takes care about the http connection and response handling
  */
 export class HltbSearch {
   public static BASE_URL = "https://howlongtobeat.com/";
-  public static DETAIL_URL = `${HltbSearch.BASE_URL}game?id=`;
-  public static SEARCH_URL = `${HltbSearch.BASE_URL}api/search`;
+  public static DETAIL_URL = `${HltbSearch.BASE_URL}game/`;
   public static IMAGE_URL = `${HltbSearch.BASE_URL}games/`;
+  public static API_SEARCH_ENDPOINT = "/api/locate/";
 
-  payload = {
+  payload: SearchPayload = {
     searchType: "games",
-    searchTerms: [] as string[],
+    searchTerms: [""],
     searchPage: 1,
     size: 20,
     searchOptions: {
@@ -22,46 +24,52 @@ export class HltbSearch {
         platform: "",
         sortCategory: "popular",
         rangeCategory: "main",
-        rangeTime: {
-          min: 0,
-          max: 0,
-        },
-        gameplay: {
-          perspective: "",
-          flow: "",
-          genre: "",
-        },
+        rangeTime: { min: null, max: null },
+        gameplay: { perspective: "", flow: "", genre: "", difficulty: "" },
+        rangeYear: { min: "", max: "" },
         modifier: "",
       },
-      users: {
-        sortCategory: "postcount",
-      },
+      users: { sortCategory: "postcount" },
+      lists: { sortCategory: "follows" },
       filter: "",
       sort: 0,
       randomizer: 0,
     },
   };
 
-  async search(query: Array<string>, signal?: AbortSignal): Promise<any> {
+  async search(query: Array<string>, signal?: AbortSignal): Promise<SearchResponse> {
     // Use built-in javascript URLSearchParams as a drop-in replacement to create axios.post required data param
-    const search = { ...this.payload };
+    const search: SearchPayload = { ...this.payload };
     search.searchTerms = query;
 
+    let localHash = await LocalStorage.getItem<string>("hashToken");
+
+    if (!localHash || !(await validateHash(localHash, search))) {
+      // Fetch a new hash and update local storage
+      localHash = await fetchLatestHash();
+      LocalStorage.setItem("hashToken", localHash);
+    }
+
     try {
-      const result = await axios.post(HltbSearch.SEARCH_URL, search, {
-        headers: {
-          "content-type": "application/json",
-          origin: "https://howlongtobeat.com/",
-          referer: "https://howlongtobeat.com/",
-          "User-Agent": new UserAgent().toString(),
-        },
+      const result = await ApiService.getInstance().post(`${HltbSearch.API_SEARCH_ENDPOINT}${localHash}`, search, {
         timeout: 20000,
         signal,
       });
-      return result.data;
+      return result.data as unknown as SearchResponse;
     } catch (error) {
       showToast({ style: Toast.Style.Failure, title: "Error fetching game list:", message: String(error) });
       throw error;
     }
   }
 }
+
+const validateHash = async (hash: string, search: SearchPayload): Promise<boolean> => {
+  try {
+    const response = await ApiService.getInstance().post(`${HltbSearch.API_SEARCH_ENDPOINT}${hash}`, search, {
+      timeout: 5000, // Shorter timeout for validation
+    });
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+};

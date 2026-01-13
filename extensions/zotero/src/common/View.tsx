@@ -182,6 +182,15 @@ ${item.abstractNote ? "**Abstract:** " + item.abstractNote : ""}
 
 ${item.tags ? "**Tagged With:** " + item.tags.join(", ") : ""}
 
+${
+  item.notes?.length
+    ? `**Notes:**\n${item.notes
+        .slice(0, 3)
+        .map((note) => `- ${note.length > 280 ? note.slice(0, 277).trimEnd() + "..." : note}`)
+        .join("\n")}`
+    : ""
+}
+
 `;
 }
 
@@ -196,16 +205,20 @@ export const View = ({
   const [urls, onOpen] = useVisitedUrls();
   const [collection, setCollection] = useState<string>("All");
   const preferences: Preferences = getPreferenceValues();
+  const [searchText, setSearchText] = useState<string>("");
   return (
     <List
       isShowingDetail={queryResults[0].length > 0}
       isLoading={isLoading}
-      onSearchTextChange={onSearchTextChange}
+      onSearchTextChange={(text) => {
+        setSearchText(text);
+        onSearchTextChange?.(text);
+      }}
       throttle={throttle}
       searchBarPlaceholder="Search Zotero..."
       searchBarAccessory={<CollectionDropdown onSelection={setCollection} collections={collections} />}
     >
-      {queryResults[0].length < 1 ? (
+      {searchText.length === 0 ? (
         <List.EmptyView icon={{ source: "no-view.png" }} title="Type something to search Zotero Database!" />
       ) : (
         sectionNames.map((sectionName, sectionIndex) => (

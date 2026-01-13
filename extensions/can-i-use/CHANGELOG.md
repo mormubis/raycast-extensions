@@ -1,5 +1,14 @@
 # Can I Use Changelog
 
+## [Updates] - 2025-11-17
+
+- Update navigation title
+
+## [Updates] - 2024-04-11
+
+- Update the Can I Use package to the latest version
+- Update (dev)dependencies
+
 ## [Improvements] - 2022-07-30
 
 - Add option to Show release date
